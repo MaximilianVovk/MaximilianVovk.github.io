@@ -343,8 +343,8 @@ document.addEventListener('pointerup', (event) => {
                     document.getElementById('info-impact-period').textContent = `Possible impacts between ${obj_data.extraParams.years.split('-')[0]} and ${obj_data.extraParams.years.split('-')[1]}`;
                 if (('PS max' in obj_data.extraParams) && (obj_data.extraParams['PS max'] !== undefined))
                     document.getElementById('info-risk').textContent = `Impact risk: ${obj_data.extraParams['PS max']} (Palermo Scale)`;
-                if (('vel' in obj_data.extraParams) && (obj_data.extraParams.vel !== undefined))
-                    document.getElementById('info-vel').textContent = `Velocity: ${obj_data.extraParams.vel} km/s`;
+                // if (('vel' in obj_data.extraParams) && (obj_data.extraParams.vel !== undefined))
+                //    document.getElementById('info-vel').textContent = `Velocity: ${obj_data.extraParams.vel} km/s`;
                 
                 if (('average_temperature_C' in obj_data.extraParams) && (obj_data.extraParams.average_temperature_C !== undefined))
                     document.getElementById('info-temp').textContent = `Average temperature: ${obj_data.extraParams.average_temperature_C}\u00B0C`;
@@ -370,9 +370,9 @@ document.addEventListener('pointerup', (event) => {
             document.getElementById('info-node').textContent = `Longitude of ascending node: ${(obj_data.orbitParams.node / Math.PI * 180).toFixed(3)}\u00B0`;
             document.getElementById('info-peri').textContent = `Argument of perihelion: ${(obj_data.orbitParams.peri / Math.PI * 180).toFixed(3)}\u00B0`;
             document.getElementById('info-ma').textContent = `Mean anomaly: ${(obj_data.orbitParams.ma / Math.PI * 180).toFixed(3)}\u00B0`;
-            if (obj_data.orbitParams.epoch != undefined){
-                document.getElementById('info-epoch').textContent = `Epoch: ${obj_data.orbitParams.epoch} (MJD)`;
-            }
+            // if (obj_data.orbitParams.epoch != undefined){
+            //     document.getElementById('info-epoch').textContent = `Epoch: ${obj_data.orbitParams.epoch} (MJD)`;
+            // }
             // Update sprite texture
             if (highlightedObj.userData.parent.name == 'rings'){
                 updateSpriteTexture(sprite, 'Saturn');
