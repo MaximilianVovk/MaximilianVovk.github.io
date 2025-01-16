@@ -353,11 +353,11 @@ document.addEventListener('pointerup', (event) => {
                 if (('mass_kg' in obj_data.extraParams) && (obj_data.extraParams.mass_kg !== undefined)){
                     const mass = obj_data.extraParams.mass_kg / 5.97237e+24
                     if (mass < 1e-3)
-                        document.getElementById('info-mass').textContent = `Mass: ${(mass * 1e4).toFixed(3)} \u00D7 10\u207B\u2074 M\u{1F728}`;
+                        document.getElementById('info-mass').textContent = `Mass: ${(mass * 1e4).toFixed(3)} \u00D7 10\u207B\u2074 M\u2295`;
                     else if (mass < 1e-2)
-                        document.getElementById('info-mass').textContent = `Mass: ${(mass * 1e3).toFixed(3)} \u00D7 10\u207B\u00B3 M\u{1F728}`;
+                        document.getElementById('info-mass').textContent = `Mass: ${(mass * 1e3).toFixed(3)} \u00D7 10\u207B\u00B3 M\u2295`;
                     else
-                        document.getElementById('info-mass').textContent = `Mass: ${mass.toFixed(3)} M\u{1F728}`;
+                        document.getElementById('info-mass').textContent = `Mass: ${mass.toFixed(3)} M\u2295`;
                 }
                 if (('obliquity' in obj_data.extraParams) && (obj_data.extraParams.obliquity !== undefined))
                     document.getElementById('info-obl').textContent = `Obliquity (axial tilt): ${obj_data.extraParams.obliquity.toFixed(1)}\u00B0`;
