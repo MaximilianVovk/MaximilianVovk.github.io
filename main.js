@@ -902,6 +902,50 @@ function isEarthInStreamRange(earthAnomaly, streamAnomalyBegin, streamAnomalyEnd
     return earthAnomaly >= streamAnomalyBegin && earthAnomaly <= streamAnomalyEnd;
 }
 
+
+function parseDateTimeStr(dateTimeStr) {
+    // (As shown above)
+    const [datePart, timePart] = dateTimeStr.split(' ');
+    const [yearStr, monthStr, dayStr] = datePart.split('-');
+    const [hourStr, minStr, secStr] = timePart ? timePart.split(':') : ["0","0","0"];
+
+    return {
+        year:   parseInt(yearStr, 10),
+        month:  parseInt(monthStr, 10),
+        day:    parseInt(dayStr, 10),
+        hour:   parseInt(hourStr, 10),
+        minute: parseInt(minStr, 10),
+        second: parseInt(secStr, 10),
+    };
+}
+
+function parseMonthDayToDOY(monthDayStr) {
+    // (As shown above)
+    const [mStr, dStr] = monthDayStr.split('-');
+    const m = parseInt(mStr, 10);
+    const d = parseInt(dStr, 10);
+    
+    const daysBeforeMonth = [0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+    return daysBeforeMonth[m] + d;
+}
+
+function currentDayOfYearFromMJD(mjd) {
+    const dateStr  = MJDToDatetime(mjd);
+    const { month, day } = parseDateTimeStr(dateStr);
+    
+    const daysBeforeMonth = [0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334];
+    return daysBeforeMonth[month] + day;
+}
+
+function isInActivityRange(currentDOY, startDOY, endDOY) {
+    if (endDOY >= startDOY) {
+        return (currentDOY >= startDOY && currentDOY <= endDOY);
+    }
+    // Range wraps end of year
+    return (currentDOY >= startDOY && currentDOY <= 365) ||
+           (currentDOY >= 1       && currentDOY <= endDOY);
+}
+
 let sunMesh = addSun(); // Generate sunMesh and also return it so can be rotated
 await initializePlanets(); // Initialize planets once
 await initializeNeos(); // Initialize NEOs once
@@ -1203,44 +1247,177 @@ function animate(time) {
     const earthOrbitParams = planets.find(p => p.name === 'Earth').data.orbitParams;
     const earthTrueAnomaly = JulianDateToTrueAnomaly(earthOrbitParams, JD);
 
-    // Update parent body positions for showers if they exist
-    for (let i = 0; i < showers.length; i++) {
-        if (filterConditions.shownTypes['Shower']) {
-            if (showers[i].parentBodyMesh) { // Only update position if parent body exists
 
+    
+    // // Update parent body positions for showers if they exist
+    // for (let i = 0; i < showers.length; i++) {
+    //     if (filterConditions.shownTypes['Shower']) {
+    //         if (showers[i].parentBodyMesh) { // Only update position if parent body exists
+
+    //             const parentOrbitParams = showers[i].orbitMeshes[0].userData.parent.data.orbitParams;
+    //             if (parentOrbitParams) {
+    //                 const parentTrueAnomaly = JulianDateToTrueAnomaly(parentOrbitParams, JD);
+    //                 const parentPos = getOrbitPosition(parentOrbitParams.a, parentOrbitParams.e, parentTrueAnomaly, parentOrbitParams.transformMatrix);
+    //                 showers[i].setPosition(parentPos); // Correctly update the parent body position
+    //             } else {
+    //                 console.warn(`No orbit parameters found for parent body ${showers[i].parentBodyName}`);
+    //             }
+    //         }
+
+
+    //         for (let j = 0; j < showers[i].orbitMeshes.length; j++) {
+    //             const orbMesh = showers[i].orbitMeshes[j];
+            
+    //             // Access the data carefully:
+    //             const extraParams = orbMesh?.userData?.parent?.data?.extraParams;
+    //             if (!extraParams) continue;
+            
+    //             const streamStart = extraParams.activity_start; // e.g. "05-07"
+    //             const streamEnd   = extraParams.activity_end;   // e.g. "05-13"
+            
+    //             // 1) If BOTH start & end exist as valid strings, we do date-range checks.
+    //             if (typeof streamStart === "string" && typeof streamEnd === "string") {
+    //                 // We expect the format "MM-DD". Parse them safely:
+    //                 const startDOY = parseMonthDayToDOY(streamStart); // your function
+    //                 const endDOY   = parseMonthDayToDOY(streamEnd);
+                    
+    //                 // currentDayOfYearFromMJD: your function to get today's day-of-year
+    //                 const currentDOY = currentDayOfYearFromMJD(MJD);
+            
+    //                 // 2) Check if today's DOY is in [startDOY .. endDOY] (with wrap logic)
+    //                 if (isInActivityRange(currentDOY, startDOY, endDOY)) {
+    //                     // Show the orbit
+    //                     orbMesh.material.color.set(SHOWER_ORBIT_COLOR);
+    //                     orbMesh.material.transparent = false;
+    //                     orbMesh.material.opacity = 1;
+    //                     orbMesh.raycast = THREE.Mesh.prototype.raycast;
+                        
+    //                     continue;
+    //                 }
+    //             }
+            
+    //             // Default / else case: if the date check fails or there's no date info,
+    //             // revert to 'not visible' if currently visible. Adjust as needed.
+    //             if (orbMesh.material.color.getHex() === SHOWER_ORBIT_COLOR) {
+    //                 orbMesh.material.color.set(SHOWER_ORBIT_COLOR_NOTVIS);
+    //                 orbMesh.material.transparent = true;
+    //                 orbMesh.material.opacity = 0.05;
+    //                 // Disable click picking
+    //                 orbMesh.raycast = function () {};
+    //             }
+    //         }
+    //     }
+    // }
+
+    // TEST
+
+    // The overlay elements (must exist in the DOM)
+    const showersOverlay = document.getElementById('activeShowersOverlay');
+    const showersText = document.getElementById('activeShowersText');
+
+    // If the "Shower" toggle is ON, display the overlay & update showers
+    showersOverlay.style.display = 'block';
+
+    // Keep track of all active shower labels (deduplicate with a Set)
+    const activeShowerLabels = new Set();
+
+    if (!filterConditions.shownTypes['Shower']) {
+        // Hide the overlay once, no matter how many showers
+        showersOverlay.classList.add('hidden');   // .hidden -> display:none;
+    }
+    
+    if (filterConditions.shownTypes['Shower']) {
+
+        // Show the panel
+        showersOverlay.classList.remove('hidden');
+
+        // Loop over all showers
+        for (let i = 0; i < showers.length; i++) {
+
+            // Update parent body position if it exists
+            if (showers[i].parentBodyMesh) {
                 const parentOrbitParams = showers[i].orbitMeshes[0].userData.parent.data.orbitParams;
                 if (parentOrbitParams) {
                     const parentTrueAnomaly = JulianDateToTrueAnomaly(parentOrbitParams, JD);
-                    const parentPos = getOrbitPosition(parentOrbitParams.a, parentOrbitParams.e, parentTrueAnomaly, parentOrbitParams.transformMatrix);
-                    showers[i].setPosition(parentPos); // Correctly update the parent body position
+                    const parentPos = getOrbitPosition(
+                        parentOrbitParams.a,
+                        parentOrbitParams.e,
+                        parentTrueAnomaly,
+                        parentOrbitParams.transformMatrix
+                    );
+                    showers[i].setPosition(parentPos);
                 } else {
                     console.warn(`No orbit parameters found for parent body ${showers[i].parentBodyName}`);
                 }
             }
 
+            // Loop over each orbit mesh for this shower
             for (let j = 0; j < showers[i].orbitMeshes.length; j++) {
                 const orbMesh = showers[i].orbitMeshes[j];
-                const streamAnomalyBegin = orbMesh.userData.parent.data.extraParams.true_anomaly_begin;
-                const streamAnomalyEnd = orbMesh.userData.parent.data.extraParams.true_anomaly_end;
+                const extraParams = orbMesh?.userData?.parent?.data?.extraParams;
+                if (!extraParams) continue;
 
-                const streamName = showers[i].name;
-                //console.log(streamName, 'the stream name', streamAnomalyBegin, streamAnomalyEnd, 'the stream anomaly begin and end', earthTrueAnomaly);
+                // Gather Code & Name
+                const code = extraParams.Code || "";
+                const name = extraParams["showername-designation"] || "";
+                let label;
+                if (code && name) {
+                    label = `${code} (${name})`;
+                } else if (code) {
+                    label = code;
+                } else {
+                    label = name; // might be empty string if both missing
+                }
 
-            
-                if (isEarthInStreamRange(earthTrueAnomaly * 180 / Math.PI, streamAnomalyBegin, streamAnomalyEnd)) {
-                    orbMesh.material.color.set(SHOWER_ORBIT_COLOR);
-                    orbMesh.material.transparent = false;
-                    orbMesh.material.opacity = 1;
-                    orbMesh.raycast = THREE.Mesh.prototype.raycast;
-                } else if (orbMesh.material.color.getHex() === SHOWER_ORBIT_COLOR) {
+                // If we have date range info, do the check
+                const streamStart = extraParams.activity_start; // e.g. "05-07"
+                const streamEnd   = extraParams.activity_end;   // e.g. "05-13"
+
+                if (typeof streamStart === "string" && typeof streamEnd === "string") {
+                    const startDOY = parseMonthDayToDOY(streamStart); 
+                    const endDOY   = parseMonthDayToDOY(streamEnd);
+                    const currentDOY = currentDayOfYearFromMJD(MJD);
+
+                    // If current date is in the shower's active range
+                    if (isInActivityRange(currentDOY, startDOY, endDOY)) {
+                        // Show orbit
+                        orbMesh.material.color.set(SHOWER_ORBIT_COLOR);
+                        orbMesh.material.transparent = false;
+                        orbMesh.material.opacity = 1;
+                        orbMesh.raycast = THREE.Mesh.prototype.raycast;
+
+                        // Add label if not empty
+                        if (label) activeShowerLabels.add(label);
+
+                        // Move on to the next orbit mesh
+                        continue;
+                    }
+                }
+
+                // Otherwise, hide the orbit
+                if (orbMesh.material.color.getHex() === SHOWER_ORBIT_COLOR) {
                     orbMesh.material.color.set(SHOWER_ORBIT_COLOR_NOTVIS);
                     orbMesh.material.transparent = true;
                     orbMesh.material.opacity = 0.05;
-                    orbMesh.raycast = function() {};
+                    orbMesh.raycast = function () {};
                 }
             }
         }
     }
+
+    // Update the overlay text with all active showers
+    const labelsArray = Array.from(activeShowerLabels);
+    if (labelsArray.length === 0) {
+        showersText.textContent = "No active showers";
+    } else {
+        // Example: bullet points for each line
+        //  - "Active showers:<br>- PIH (pi-Hydrids)<br>- CAP (alpha-Capricornids)"
+        const htmlList = labelsArray.map(label => ` • ${label}`).join("<br>");
+        showersText.innerHTML = `Active showers:<br>${htmlList}`;
+    }
+
+
+    // TEST
 
     // Update the billboard plane to face the camera
     updateBillboard(billboardPlane, camera);
