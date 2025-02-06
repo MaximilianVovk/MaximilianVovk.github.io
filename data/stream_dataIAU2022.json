@@ -1973,8 +1973,8 @@
             "References": "3]<Ahref='http://adsabs.harvard.edu/abs/2016Icar..266..331J'target=_blank>Jenniskensetal.,2016</A>",
             "true_anomaly_begin": -636.7,
             "true_anomaly_end": -277.70000000000005,
-            "activity_start": "03-21",
-            "activity_end": "03-20"
+            "activity_start": "03-15",
+            "activity_end": "03-21"
         }
     },
     "eta-Virginids from 03-21 to 03-21": {
@@ -2019,7 +2019,7 @@
             "References": "7)<Ahref='https://ui.adsabs.harvard.edu/abs/2022JIMO...50...38S/abstract'target=_blank>Shiba,2022.</a>",
             "true_anomaly_begin": -280.511,
             "true_anomaly_end": -640.496,
-            "activity_start": "03-21",
+            "activity_start": "03-15",
             "activity_end": "03-21"
         }
     },
