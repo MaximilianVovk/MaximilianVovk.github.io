@@ -1,4 +1,30 @@
 {
+	    "(2024 YR4)": {
+        "orbitParams": {
+            "epoch": 60800,
+            "a": 2.5159057567636971,
+            "e": 0.66155364578922093,
+            "inc": 3.4081938432005,
+            "node": 271.3656101492350,
+            "peri": 134.3613453791250,
+            "ma": 40.401644445738505
+        },
+        "extraParams": {
+            "risk": true,
+            "diameter": 60.0,
+            "diameter_based_on_magnitude": true,
+            "impact": "2032-12-22 14:02",
+            "IP max": 0.0206,
+            "PS max": -0.34,
+            "TS": 3,
+            "vel": 17.34,
+            "years": "2032-2079",
+            "IP cum": 0.0206,
+            "PS cum": -0.34,
+            "class": "Apollo",
+            "type": "NEA"
+        }
+    },
     "(2023 VD3)": {
         "orbitParams": {
             "epoch": 60600,
