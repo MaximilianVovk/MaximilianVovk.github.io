@@ -406,8 +406,8 @@ document.addEventListener('pointerup', (event) => {
                     document.getElementById('info-impact-period').textContent = `Possible impacts between ${obj_data.extraParams.years.split('-')[0]} and ${obj_data.extraParams.years.split('-')[1]}`;
                 if (('PS max' in obj_data.extraParams) && (obj_data.extraParams['PS max'] !== undefined))
                     document.getElementById('info-risk').textContent = `Impact risk: ${obj_data.extraParams['PS max']} (Palermo Scale)`;
-                if (('vel' in obj_data.extraParams) && (obj_data.extraParams.vel !== undefined))
-                    document.getElementById('info-vel').textContent = `Velocity: ${obj_data.extraParams.vel} km/s`;
+                // if (('vel' in obj_data.extraParams) && (obj_data.extraParams.vel !== undefined))
+                //     document.getElementById('info-vel').textContent = `Velocity: ${obj_data.extraParams.vel} km/s`;
                 
                 if (('average_temperature_C' in obj_data.extraParams) && (obj_data.extraParams.average_temperature_C !== undefined))
                     document.getElementById('info-temp').textContent = `Average temperature: ${obj_data.extraParams.average_temperature_C}\u00B0C`;
