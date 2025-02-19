@@ -352,8 +352,8 @@ document.addEventListener('pointerup', (event) => {
                 document.getElementById('info-diameter').textContent = `Diameter: 1391000 km`;
                 document.getElementById('info-temp').textContent = `Surface temperature: 5499\u00B0C`;
                 document.getElementById('info-grav').textContent = `Surface gravity: 273.95 m/s\u00B2`;
-                document.getElementById('info-mass').textContent = `Mass: 333000 M\u2295`;
-                // document.getElementById('info-mass').textContent = `Mass: 1.988 \u00D7 10\u00B3\u2070 M\u2295`;
+                document.getElementById('info-mass').textContent = `Mass: 333000 M\u{1F728}`;
+                // document.getElementById('info-mass').textContent = `Mass: 1.988 \u00D7 10\u00B3\u2070 M\u{1F728}`;
                 document.getElementById('info-obl').textContent = `Obliquity (axial tilt): 7.25\u00B0`;
                 document.getElementById('info-rotper').textContent = `Rotation period: 25.05 days`;
                 
@@ -717,40 +717,265 @@ async function initializeShowers() {
     }
 }
 
-// Add radial gradient plane
-function createRadialGradientPlane(width, height) {
-    const geometry = new THREE.PlaneGeometry(width, height, 1, 1);
-    const material = new THREE.ShaderMaterial({
-        vertexShader: `
-            varying vec2 vUv;
-            void main() {
-                vUv = uv;
-                gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-            }
-        `,
-        fragmentShader: `
-            varying vec2 vUv;
-            void main() {
-                float distanceFromCenter = length(vUv - vec2(0.5, 0.5));
-                float alpha = (1.0 - distanceFromCenter * 2.0)*0.5;
-                alpha = clamp(alpha, 0.0, 1.0);
-                if (alpha < 0.01) {
-                    discard;
-                }
-                gl_FragColor = vec4(0.0, 1.0, 0.0, alpha);
-            }
-        `,
-        transparent: true,
-        side: THREE.DoubleSide,
-        depthWrite: false,
-        depthTest: false,
-    });
+// // Add radial gradient plane
+// function createRadialGradientPlane(width, height) {
+//     const geometry = new THREE.PlaneGeometry(width, height, 1, 1);
+//     const material = new THREE.ShaderMaterial({
+//         vertexShader: `
+//             varying vec2 vUv;
+//             void main() {
+//                 vUv = uv;
+//                 gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+//             }
+//         `,
+//         fragmentShader: `
+//             varying vec2 vUv;
+//             void main() {
+//                 float distanceFromCenter = length(vUv - vec2(0.5, 0.5));
+//                 float alpha = (1.0 - distanceFromCenter * 2.0)*0.5;
+//                 alpha = clamp(alpha, 0.0, 1.0);
+//                 if (alpha < 0.01) {
+//                     discard;
+//                 }
+//                 gl_FragColor = vec4(0.0, 1.0, 0.0, alpha);
+//             }
+//         `,
+//         transparent: true,
+//         side: THREE.DoubleSide,
+//         depthWrite: false,
+//         depthTest: false,
+//     });
 
+//     const plane = new THREE.Mesh(geometry, material);
+//     plane.rotation.x = Math.PI / 2;
+//     plane.renderOrder = 0;
+//     return plane;
+// }
+
+function createRadialGradientPlane_plane(width, height) {
+    // 1) Create a plane large enough to cover the region
+    const geometry = new THREE.PlaneGeometry(width, height);
+  
+    // 2) Define uniforms (the Sun’s position, and a scale factor k)
+    const uniforms = {
+      sunPos: { value: new THREE.Vector3(0, 0, 0) }, // if Sun is at origin
+      k:      { value: 0.2 }                         // scaling factor
+    };
+  
+    // 3) Write our custom shader
+    const material = new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: `
+        varying vec3 vWorldPos;
+        void main() {
+          // Transform vertex into world space
+          vec4 worldPos = modelMatrix * vec4(position, 1.0);
+          vWorldPos = worldPos.xyz;
+  
+          // Standard gl_Position
+          gl_Position = projectionMatrix * viewMatrix * worldPos;
+        }
+      `,
+      fragmentShader: `
+        // We bring in the uniforms and the interpolated world position
+        uniform vec3 sunPos;
+        uniform float k;
+        varying vec3 vWorldPos;
+  
+        void main() {
+          // Distance from this fragment to the Sun
+          float r = distance(vWorldPos, sunPos);
+  
+          // Avoid infinite opacity at r=0 (or near-zero)
+          r = max(r, 0.00001);
+  
+          // Compute alpha ~ 1 / r^1.3, scaled by k
+          float alpha = k / pow(r, 1.3);
+  
+          // Clamp to [0..1]
+          alpha = clamp(alpha, 0.0, 1.0);
+  
+          // Optionally discard to save fill-rate if too faint
+          if (alpha < 0.01) discard;
+  
+          // Green color with alpha
+          gl_FragColor = vec4(0.0, 1.0, 0.0, alpha);
+        }
+      `,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      depthTest: false
+    });
+  
+    // 4) Create the Mesh
     const plane = new THREE.Mesh(geometry, material);
+  
+    // Tilt so it’s “flat” in the ecliptic, for example:
     plane.rotation.x = Math.PI / 2;
-    plane.renderOrder = 0;
+  
     return plane;
 }
+  
+
+function createRadialGradientPlane(width, height) {
+  // 1) The radius of the sphere is half the plane’s width
+  const radius = width * 0.5;
+
+  // 2) Create a sphere geometry
+  //    64 segments is fairly detailed; you can reduce if performance is an issue.
+  const sphereGeometry = new THREE.SphereGeometry(radius, 64, 64);
+
+  // 3) Create a Mesh from that geometry (temp material for now)
+  const mesh = new THREE.Mesh(sphereGeometry);
+
+  // 4) Optionally flatten (“squish”) in Y to get a disk-like shape
+  //    Increase or decrease 0.2 to taste
+  mesh.scale.set(1.0, 0.2, 1.0);
+
+  // 5) Build our custom ShaderMaterial
+  const uniforms = {
+    sunPos: { value: new THREE.Vector3(0, 0, 0) }, // If your Sun is at (0,0,0)
+    k:      { value: 0.2 }                         // Brightness scale factor
+  };
+
+  const material = new THREE.ShaderMaterial({
+    uniforms,
+    vertexShader: `
+      varying vec3 vWorldPos;
+      void main() {
+        // Transform each vertex to world space
+        vec4 worldPos = modelMatrix * vec4(position, 1.0);
+        vWorldPos = worldPos.xyz;
+
+        // Standard MVP transform
+        gl_Position = projectionMatrix * viewMatrix * worldPos;
+      }
+    `,
+    fragmentShader: `
+      uniform vec3 sunPos;
+      uniform float k;
+      varying vec3 vWorldPos;
+
+      void main() {
+        // Distance from fragment to the Sun
+        float r = distance(vWorldPos, sunPos);
+        // Avoid infinite alpha at r=0
+        r = max(r, 0.0001);
+
+        // Falloff ~ r^-1.3, scaled by k
+        float alpha = k / pow(r, 1.3);
+
+        // Clamp alpha to [0..1]
+        alpha = clamp(alpha, 0.0, 1.0);
+
+        // Optionally discard very faint fragments
+        if (alpha < 0.01) {
+          discard;
+        }
+
+        // Example color is green
+        gl_FragColor = vec4(0.0, 1.0, 0.0, alpha);
+      }
+    `,
+    transparent: true,
+    side: THREE.DoubleSide,
+    depthWrite: false,
+    depthTest: false
+  });
+
+  // 6) Assign the shader material
+  mesh.material = material;
+
+  return mesh;
+}
+
+
+/**
+ * Create a "zodiacal cloud" that:
+ *  - extends out to `planeWidth/2` in radius,
+ *  - is scaled in Y to be flatter,
+ *  - has a radial color gradient,
+ *  - and fades alpha with r^-1.3.
+ */
+function createZodiacalCloud3D(planeWidth) {
+    // 1) The radius is half the plane’s width
+    const radius = planeWidth * 0.5;
+  
+    // 2) Create a sphere geometry (big enough to cover your region)
+    const sphereGeometry = new THREE.SphereGeometry(radius, 64, 64);
+  
+    // 3) Create a Mesh from that geometry. We'll scale it to be "flatter"
+    const mesh = new THREE.Mesh(sphereGeometry);
+    mesh.scale.set(1.0, 0.2, 1.0);  // flatten in Y
+  
+    // 4) Define shader uniforms
+    const uniforms = {
+      sunPos:       { value: new THREE.Vector3(0, 0, 0) }, // If Sun is at origin
+      k:            { value: 0.2 },                        // brightness scaling for r^-1.3
+      cloudRadius:  { value: radius },                     // so we know "max" distance
+      colorInner:   { value: new THREE.Color(1.0, 1.0, 0.0) }, // near the Sun (yellow)
+      colorOuter:   { value: new THREE.Color(0.0, 1.0, 0.0) }, // near the boundary (green)
+    };
+  
+    // 5) Create a ShaderMaterial for the cloud
+    const material = new THREE.ShaderMaterial({
+      uniforms,
+      vertexShader: `
+        varying vec3 vWorldPos;
+        void main() {
+          // Compute world-space position of each vertex
+          vec4 worldPos = modelMatrix * vec4(position, 1.0);
+          vWorldPos = worldPos.xyz;
+  
+          // Standard MVP transform
+          gl_Position = projectionMatrix * viewMatrix * worldPos;
+        }
+      `,
+      fragmentShader: `
+        uniform vec3 sunPos;
+        uniform float k;
+        uniform float cloudRadius;
+        uniform vec3 colorInner;
+        uniform vec3 colorOuter;
+  
+        varying vec3 vWorldPos;
+  
+        void main() {
+          // Distance from this fragment to the Sun
+          float r = distance(vWorldPos, sunPos);
+          r = max(r, 0.0001); // avoid division by zero
+  
+          // 1) Alpha fade ~ r^-1.3
+          float alpha = k / pow(r, 1.3);
+          alpha = clamp(alpha, 0.0, 1.0);
+  
+          // 2) Discard fragments that are too faint
+          if (alpha < 0.01) {
+            discard;
+          }
+  
+          // 3) Radial color gradient
+          //    t=0 near center, t=1 near outer boundary
+          float t = clamp(r / cloudRadius, 0.0, 1.0);
+          vec3 color = mix(colorInner, colorOuter, t);
+  
+          // Final color
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
+      transparent: true,
+      side: THREE.DoubleSide,
+      depthWrite: false,
+      depthTest: false
+    });
+  
+    // 6) Assign the material to our mesh
+    mesh.material = material;
+  
+    return mesh;
+  }
+  
 
 // Function to create a radial gradient plane with an exponential drop-off
 function createSunGradientPlane(width, height) {
@@ -1247,83 +1472,22 @@ function animate(time) {
     const earthOrbitParams = planets.find(p => p.name === 'Earth').data.orbitParams;
     const earthTrueAnomaly = JulianDateToTrueAnomaly(earthOrbitParams, JD);
 
-
-    
-    // // Update parent body positions for showers if they exist
-    // for (let i = 0; i < showers.length; i++) {
-    //     if (filterConditions.shownTypes['Shower']) {
-    //         if (showers[i].parentBodyMesh) { // Only update position if parent body exists
-
-    //             const parentOrbitParams = showers[i].orbitMeshes[0].userData.parent.data.orbitParams;
-    //             if (parentOrbitParams) {
-    //                 const parentTrueAnomaly = JulianDateToTrueAnomaly(parentOrbitParams, JD);
-    //                 const parentPos = getOrbitPosition(parentOrbitParams.a, parentOrbitParams.e, parentTrueAnomaly, parentOrbitParams.transformMatrix);
-    //                 showers[i].setPosition(parentPos); // Correctly update the parent body position
-    //             } else {
-    //                 console.warn(`No orbit parameters found for parent body ${showers[i].parentBodyName}`);
-    //             }
-    //         }
-
-
-    //         for (let j = 0; j < showers[i].orbitMeshes.length; j++) {
-    //             const orbMesh = showers[i].orbitMeshes[j];
-            
-    //             // Access the data carefully:
-    //             const extraParams = orbMesh?.userData?.parent?.data?.extraParams;
-    //             if (!extraParams) continue;
-            
-    //             const streamStart = extraParams.activity_start; // e.g. "05-07"
-    //             const streamEnd   = extraParams.activity_end;   // e.g. "05-13"
-            
-    //             // 1) If BOTH start & end exist as valid strings, we do date-range checks.
-    //             if (typeof streamStart === "string" && typeof streamEnd === "string") {
-    //                 // We expect the format "MM-DD". Parse them safely:
-    //                 const startDOY = parseMonthDayToDOY(streamStart); // your function
-    //                 const endDOY   = parseMonthDayToDOY(streamEnd);
-                    
-    //                 // currentDayOfYearFromMJD: your function to get today's day-of-year
-    //                 const currentDOY = currentDayOfYearFromMJD(MJD);
-            
-    //                 // 2) Check if today's DOY is in [startDOY .. endDOY] (with wrap logic)
-    //                 if (isInActivityRange(currentDOY, startDOY, endDOY)) {
-    //                     // Show the orbit
-    //                     orbMesh.material.color.set(SHOWER_ORBIT_COLOR);
-    //                     orbMesh.material.transparent = false;
-    //                     orbMesh.material.opacity = 1;
-    //                     orbMesh.raycast = THREE.Mesh.prototype.raycast;
-                        
-    //                     continue;
-    //                 }
-    //             }
-            
-    //             // Default / else case: if the date check fails or there's no date info,
-    //             // revert to 'not visible' if currently visible. Adjust as needed.
-    //             if (orbMesh.material.color.getHex() === SHOWER_ORBIT_COLOR) {
-    //                 orbMesh.material.color.set(SHOWER_ORBIT_COLOR_NOTVIS);
-    //                 orbMesh.material.transparent = true;
-    //                 orbMesh.material.opacity = 0.05;
-    //                 // Disable click picking
-    //                 orbMesh.raycast = function () {};
-    //             }
-    //         }
-    //     }
-    // }
-
-    // TEST
-
-    // The overlay elements (must exist in the DOM)
+    // The overlay elements
     const showersOverlay = document.getElementById('activeShowersOverlay');
     const showersText = document.getElementById('activeShowersText');
-
-    // If the "Shower" toggle is ON, display the overlay & update showers
-    showersOverlay.style.display = 'block';
 
     // Keep track of all active shower labels (deduplicate with a Set)
     const activeShowerLabels = new Set();
 
     if (!filterConditions.shownTypes['Shower']) {
-        // Hide the overlay once, no matter how many showers
-        showersOverlay.classList.add('hidden');   // .hidden -> display:none;
+        // HIDE the overlay
+        showersOverlay.classList.add('hidden');  
+        // Optionally also hide text
+        showersText.classList.add('hidden');
+    } else {
+        // SHOW the overlay
+        showersOverlay.classList.remove('hidden');
+        showersText.classList.remove('hidden');
     }
     
     if (filterConditions.shownTypes['Shower']) {

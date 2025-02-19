@@ -30,6 +30,10 @@ canvas {
     color: white;
 }
 
+.hidden {
+    display: none !important;
+}
+
 .active-showers-panel {
     position: fixed;
     /* Put it near the bottom-right corner */
