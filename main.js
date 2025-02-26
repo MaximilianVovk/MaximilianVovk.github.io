@@ -227,11 +227,11 @@ window.addEventListener("keydown", (event) => {
             isTracking = false; // set istracking to false
         }
     }
-    else if (event.code === 'Space') { //recenter on Sun
+    else if (event.code === 'KeyC') { //recenter on Sun
         controls.target = new THREE.Vector3(0, 0, 0);
         isTracking = false; // set istracking to false
     }
-    else if (event.code === 'Backspace') { //recenter camera to initial settings
+    else if (event.code === 'KeyR') { //recenter camera to initial settings
         resetCamera();
         isTracking = false; // set istracking to false
     }
